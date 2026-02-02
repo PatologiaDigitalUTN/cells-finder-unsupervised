@@ -1,0 +1,176 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║                      🔥 EJECUTAR EN KAGGLE (PASO A PASO)                    ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+
+⏱️  TIEMPO ESTIMADO: 10 minutos
+═════════════════════════════════════════════════════════════════════════════════
+
+
+🚀 OPCIÓN 1: NOTEBOOK LISTO PARA USAR (RECOMENDADO)
+═════════════════════════════════════════════════════════════════════════════════
+
+1. Ve a: https://www.kaggle.com/notebooks
+2. Click en "New Notebook"
+3. Click en Upload → Sube el archivo "kaggle_notebook.ipynb"
+4. Settings (⚙️) → Agrega dataset "cric-dataset"
+5. ¡Ejecuta celdas con Shift+Enter!
+
+✅ El notebook ya tiene TODO incluido.
+
+
+🎯 OPCIÓN 2: COPIAR-PEGAR (MÁS CONTROL)
+═════════════════════════════════════════════════════════════════════════════════
+
+1. Ve a: https://www.kaggle.com/notebooks
+2. Click en "New Notebook"
+3. Settings (⚙️):
+   ├─ Internet: ON
+   └─ Add Dataset: "cric-dataset" (martingra)
+4. Copia cada BLOQUE ABAJO en una celda nueva
+5. Ejecuta con Shift+Enter
+
+
+┌─ BLOQUE 1: SETUP (ejecutar primero) ──────────────────────────────────────┐
+│                                                                            │
+│ import subprocess, sys                                                    │
+│                                                                            │
+│ # Instalar                                                               │
+│ for pkg in ['open-clip-torch==2.23.0', 'transformers==4.35.2']:        │
+│     subprocess.check_call([sys.executable, '-m', 'pip', 'install',     │
+│                           '-q', pkg])                                    │
+│                                                                            │
+│ print("✅ Setup completo")                                               │
+│                                                                            │
+└────────────────────────────────────────────────────────────────────────────┘
+
+Espera a que termine (2-3 minutos)
+
+
+┌─ BLOQUE 2: CARGAR MODELO ────────────────────────────────────────────────┐
+│                                                                            │
+│ from open_clip import create_model_from_pretrained, get_tokenizer       │
+│ from utils.image_processing import load_image_and_boxes_from_json_cropped
+│ from utils.embeddings import get_all_patch_embeddings_from_image        │
+│ from utils.multi_step_clustering import (                               │
+│     run_block_clustering_on_embeddings,                                │
+│     refinar_cluster_con_kmeans,                                        │
+│     decidir_fondo_vs_tejido,                                           │
+│     decidir_nucleos_vs_citoplasma                                      │
+│ )                                                                         │
+│                                                                            │
+│ print("Cargando BiomedCLIP...")                                         │
+│ model, preprocess = create_model_from_pretrained(                      │
+│     'hf-hub:microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224' │
+│ )                                                                         │
+│ print("✅ Listo")                                                        │
+│                                                                            │
+└────────────────────────────────────────────────────────────────────────────┘
+
+
+┌─ BLOQUE 3: PROCESAR IMAGEN ──────────────────────────────────────────────┐
+│                                                                            │
+│ # Cargar imagen                                                          │
+│ img, boxes, fname = load_image_and_boxes_from_json_cropped(            │
+│     '/kaggle/input/cric-dataset/classifications.json',                │
+│     '/kaggle/input/cric-dataset',                                      │
+│     index=150,  # ← CAMBIAR AQUÍ (150-210)                           │
+│     boxes_size=60, block_size=224                                     │
+│ )                                                                         │
+│ H, W = img.shape[:2]                                                    │
+│ print(f"✅ {fname} ({W}x{H})")                                          │
+│                                                                            │
+│ # Extraer embeddings                                                    │
+│ patch_data = get_all_patch_embeddings_from_image(                     │
+│     img, model, preprocess, tile_size=224                           │
+│ )                                                                         │
+│ print(f"✅ {len(patch_data)} patches")                                  │
+│                                                                            │
+└────────────────────────────────────────────────────────────────────────────┘
+
+
+┌─ BLOQUE 4: PASO 1 - FONDO VS TEJIDO ─────────────────────────────────────┐
+│                                                                            │
+│ from utils.visualization import visualizar_clusters_basicos             │
+│                                                                            │
+│ clustered = run_block_clustering_on_embeddings(patch_data, n_clusters=2)
+│ fondo_id, tejido_id, _ = decidir_fondo_vs_tejido(img, clustered)      │
+│                                                                            │
+│ visualizar_clusters_basicos(img, clustered, boxes=boxes,               │
+│                             title="Paso 1: Fondo vs Tejido")           │
+│                                                                            │
+└────────────────────────────────────────────────────────────────────────────┘
+
+
+┌─ BLOQUE 5: PASO 2 - NÚCLEOS VS CITOPLASMA ───────────────────────────────┐
+│                                                                            │
+│ paso_2 = refinar_cluster_con_kmeans(                                   │
+│     clustered, cluster_id=tejido_id, nuevo_k=2,                      │
+│     cluster_field='cluster', new_field='subcluster'                  │
+│ )                                                                         │
+│ nucleos_id, cyto_id, _ = decidir_nucleos_vs_citoplasma(img, paso_2)  │
+│                                                                            │
+│ visualizar_clusters_basicos(img, paso_2, boxes=boxes,                 │
+│                             title="Paso 2: Núcleos vs Citoplasma")    │
+│                                                                            │
+└────────────────────────────────────────────────────────────────────────────┘
+
+
+OPCIONAL: Continúa con Pasos 3 y 4 (ver KAGGLE_README.md)
+
+
+═════════════════════════════════════════════════════════════════════════════════
+
+
+💾 GUARDAR RESULTADOS (opcional)
+═════════════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                                                                         │
+│ # Ver métricas en pantalla                                            │
+│ print(f"Clusters: {len(set(p.get('cluster') for p in paso_2))}")      │
+│ print(f"Precisión: {metrics['group_precision']:.3f}")                 │
+│ print(f"F1: {metrics['f1_coverage']:.3f}")                            │
+│                                                                         │
+│ # O guardar a archivo                                                 │
+│ import json                                                            │
+│ with open('/kaggle/working/resultados.json', 'w') as f:             │
+│     json.dump(metrics, f, indent=2)                                  │
+│                                                                         │
+│ # Download desde Output en Kaggle                                     │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+
+
+═════════════════════════════════════════════════════════════════════════════════
+
+🎯 TROUBLESHOOTING RÁPIDO
+
+❌ "No module named 'cv2'"
+   → Ejecuta de nuevo el BLOQUE 1 (setup)
+
+❌ "Dataset not found"
+   → Settings → Add Dataset → "cric-dataset"
+
+❌ "CUDA out of memory"
+   → Procesa solo 1 imagen por vez, no batch
+
+❌ "Demora mucho"
+   → Es normal (1-2 min por imagen es OK)
+
+
+═════════════════════════════════════════════════════════════════════════════════
+
+📚 OPCIONES AVANZADAS
+
+Ir a KAGGLE_README.md para:
+  ✅ Procesar múltiples imágenes en batch
+  ✅ Guardar visualizaciones PNG
+  ✅ Calcular métricas completas
+  ✅ Descargar todos los resultados
+
+═════════════════════════════════════════════════════════════════════════════════
+
+¡Eso es! Ya está ejecutándose en Kaggle 🚀
