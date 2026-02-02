@@ -7,9 +7,8 @@ __pycache__/
 dist/
 build/
 
-# Jupyter Notebooks
+# Jupyter Notebooks checkpoints
 .ipynb_checkpoints/
-*.ipynb
 
 # VS Code
 .vscode/
