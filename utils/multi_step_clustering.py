@@ -128,9 +128,10 @@ def refinar_cluster_con_kmeans(
         q[new_field] = int(sublabel)
         nuevos_patches.append(q)
     
-    # Copiar patches que no se refinaron
+    # Copiar patches que no se refinaron (comparar por identidad de objeto)
+    sub_patches_ids = {id(p) for p in sub_patches}
     for p in patches:
-        if p not in sub_patches:
+        if id(p) not in sub_patches_ids:
             nuevos_patches.append(p)
 
     return nuevos_patches
