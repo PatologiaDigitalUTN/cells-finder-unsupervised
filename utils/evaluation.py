@@ -9,35 +9,43 @@ from sklearn.metrics import confusion_matrix
 
 
 def _to_xyxy(box, img_shape=None):
-    """Convierte diferentes formatos de box a (x1, y1, x2, y2)."""
-    def _maybe_denorm(v):
-        if img_shape is None:
-            return v
-        v = np.asarray(v, dtype=float).ravel().copy()
-        if v.size >= 4 and v.min() >= 0.0 and v.max() <= 1.0001:
-            H, W = img_shape[:2]
-            v[0] *= W
-            v[1] *= H
-            v[2] *= W
-            v[3] *= H
-        return v
-
+    """
+    Convierte diferentes formatos de box a (x1, y1, x2, y2).
+    
+    IMPORTANTE: NO intenta denormalizar automáticamente.
+    Los boxes deben venir YA en píxeles (como los del JSON).
+    
+    Soporta:
+    - Dict con 'position': (x1, y1, x2, y2) o 'bbox': (x, y, w, h)
+    - Tuple/list: (x1, y1, x2, y2) o (x, y, w, h)
+    - Tuple/list con clase: (cls, x1, y1, x2, y2) <- del JSON
+    """
     if isinstance(box, dict):
         if 'position' in box:
-            x1, y1, x2, y2 = _maybe_denorm(box['position'])
+            x1, y1, x2, y2 = box['position']
             return float(x1), float(y1), float(x2), float(y2)
         if 'bbox' in box:
-            x, y, w, h = _maybe_denorm(box['bbox'])
+            x, y, w, h = box['bbox']
             return float(x), float(y), float(x + w), float(y + h)
         raise ValueError("Box dict sin claves conocidas")
     
-    arr = _maybe_denorm(box)
-    if arr[2] > arr[0] and arr[3] > arr[1]:  # xyxy
-        x1, y1, x2, y2 = arr[:4]
-        return float(x1), float(y1), float(x2), float(y2)
-    else:  # xywh
-        x, y, w, h = arr[:4]
-        return float(x), float(y), float(x + w), float(y + h)
+    arr = np.asarray(box, dtype=float).ravel()
+    if arr.size < 4:
+        raise ValueError(f"Box debe tener al menos 4 valores, tiene {arr.size}")
+    
+    # Si tiene 5 elementos, probablemente es (cls, x1, y1, x2, y2) del JSON
+    if arr.size >= 5:
+        # Saltar el primer elemento (clase) y tomar x1, y1, x2, y2
+        x1, y1, x2, y2 = arr[1:5]
+    else:
+        # 4 elementos: asumir xyxy si x2 > x1 y y2 > y1, si no asumir xywh
+        if arr[2] > arr[0] and arr[3] > arr[1]:  # xyxy
+            x1, y1, x2, y2 = arr[:4]
+        else:  # xywh
+            x, y, w, h = arr[:4]
+            x1, y1, x2, y2 = x, y, x + w, y + h
+    
+    return float(x1), float(y1), float(x2), float(y2)
 
 
 def _center(xyxy):

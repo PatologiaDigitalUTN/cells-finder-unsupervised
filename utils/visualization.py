@@ -47,7 +47,8 @@ def visualizar_clusters_basicos(img, clustered_patches, boxes=None, cluster_fiel
 
     bethesda_colors = {0: 'orange', 1: 'purple', 2: 'blue', 3: 'red', 4: 'green', 5: 'yellow'}
 
-    fig, ax = plt.subplots(figsize=(12, 12))
+    # Crear nueva figura independiente
+    fig, ax = plt.subplots(figsize=(14, 12))
 
     if img.ndim == 2:
         ax.imshow(img, cmap='gray')
@@ -70,16 +71,27 @@ def visualizar_clusters_basicos(img, clustered_patches, boxes=None, cluster_fiel
         for (cls, x1, y1, x2, y2) in boxes:
             ax.plot((x1 + x2) // 2, (y1 + y2) // 2, 'o', markersize=6, color=bethesda_colors.get(cls))
 
-    ax.set_title(title)
+    # Agregar leyenda con conteo de patches por cluster
+    legend_elements = []
+    for cid in unique_clusters:
+        count = sum(1 for p in clustered_patches if p.get(cluster_field) == cid)
+        color = cluster_colors[cid]
+        legend_elements.append(plt.Line2D([0], [0], marker='s', color='w', 
+                                         markerfacecolor=color, markersize=10, 
+                                         label=f'Cluster {cid}: {count} patches'))
+    
+    ax.legend(handles=legend_elements, loc='upper right', fontsize=10, framealpha=0.9)
+    ax.set_title(title, fontsize=14, pad=10)
     ax.axis('off')
     plt.tight_layout()
     plt.show()
+    plt.close(fig)  # Cerrar figura para liberar memoria
 
 
 def visualizar_limpieza_patches(img, kept, removed, boxes=None, alpha=0.4, 
                                  title="Limpieza de patches"):
     """Visualiza patches mantenidos (verde) y removidos (rojo)."""
-    fig, ax = plt.subplots(figsize=(12, 12))
+    fig, ax = plt.subplots(figsize=(14, 12))
 
     if img.ndim == 2:
         ax.imshow(img, cmap='gray')
@@ -87,7 +99,7 @@ def visualizar_limpieza_patches(img, kept, removed, boxes=None, alpha=0.4,
         ax.imshow(img)
 
     ax.axis('off')
-    ax.set_title(f"{title} | kept={len(kept)} removed={len(removed)}")
+    ax.set_title(f"{title} | kept={len(kept)} removed={len(removed)}", fontsize=14, pad=10)
 
     # Removidos (rojo)
     for p in removed:
@@ -123,9 +135,10 @@ def visualizar_limpieza_patches(img, kept, removed, boxes=None, alpha=0.4,
     if boxes:
         handles.append(plt.Line2D([0], [0], color='blue', lw=1.5, label='GT'))
     
-    ax.legend(handles=handles, loc='upper right')
+    ax.legend(handles=handles, loc='upper right', fontsize=10, framealpha=0.9)
     plt.tight_layout()
     plt.show()
+    plt.close(fig)  # Cerrar figura para liberar memoria
 
 
 def visualizar_grupos_vs_boxes(img, grupos, boxes_gt, match_mode='cover_gt', 
