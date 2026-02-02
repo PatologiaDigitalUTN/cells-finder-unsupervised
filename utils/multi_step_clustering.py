@@ -60,9 +60,10 @@ def run_block_clustering_on_embeddings(crops, method='kmeans', n_clusters=5):
     for crop, cluster in zip(valid_crops, cluster_labels):
         crop['cluster'] = int(cluster)
 
-    # Copiar para crops sin embedding
+    # Copiar para crops sin embedding (comparar por identidad de objeto)
+    valid_crops_ids = {id(c) for c in valid_crops}
     for crop in crops:
-        if crop not in valid_crops and 'cluster' not in crop:
+        if id(crop) not in valid_crops_ids and 'cluster' not in crop:
             crop['cluster'] = -1  # Marcar como inválido
 
     return crops
