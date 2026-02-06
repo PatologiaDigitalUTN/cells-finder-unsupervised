@@ -84,6 +84,13 @@ def _cover_gt(a, b):
     return (inter / agb) if agb > 0 else 0.0
 
 
+def _cover_pred(a, b):
+    """Fracción de la pred a cubierta por GT b."""
+    inter = _overlap_area(a, b)
+    aaa = _area(a)
+    return (inter / aaa) if aaa > 0 else 0.0
+
+
 def _iou(a, b):
     """IoU entre dos boxes."""
     inter = _overlap_area(a, b)
@@ -105,7 +112,9 @@ def evaluar_grupos_vs_boxes_plus(
     cover_pred_thr=0.5
 ):
     """
-    Evalúa grupos (patches agrupados) vs GT boxes.
+    Evalúa grupos (patches agrupados) vs GT boxes usando one-to-one matching.
+    
+    Implementa matching óptimo: cada predicción se asigna a máximo 1 GT y viceversa.
     
     Parameters:
     -----------
@@ -116,15 +125,22 @@ def evaluar_grupos_vs_boxes_plus(
     boxes_gt : list
         GT boxes.
     match_mode : str
-        'center', 'iou', 'cover_gt', etc.
+        'center', 'iou', 'cover_gt', 'overlap', etc.
+    iou_thr : float
+        Threshold para IoU matching.
+    cover_gt_thr : float
+        Threshold para cover_gt matching.
+    cover_pred_thr : float
+        Threshold para cover_pred matching.
     
     Returns:
     --------
-    dict : Métricas (TP, FP, precision, recall, F1).
+    dict : Métricas (TP, FP, precision, recall, F1) + pred_hits para visualización.
     """
     H, W = img.shape[:2]
 
-    def _match(p, g, mode):
+    def _match_score(p, g, mode):
+        """Devuelve True si hay match, o puntuación si es 'best_iou', etc."""
         c = _center(p)
         if mode == 'center':
             return _inside(c, g)
@@ -141,20 +157,55 @@ def evaluar_grupos_vs_boxes_plus(
     pred_xyxy = [_to_xyxy(g['position'], (H, W)) for g in grupos]
     gt_xyxy = [_to_xyxy(b, (H, W)) for b in boxes_gt]
 
-    pred_hits = []
-    gt_hit_counts = [0] * len(gt_xyxy)
-
-    for p in pred_xyxy:
-        hit = False
-        for i, g in enumerate(gt_xyxy):
-            if _match(p, g, match_mode):
-                hit = True
-                gt_hit_counts[i] += 1
-        pred_hits.append(hit)
+    # Estrategia: one-to-one matching por máximo overlap
+    # Para cada predicción, encontrar el mejor GT match
+    # Para cada GT, contar cuántas predicciones lo pueden matchear
+    
+    pred_hits = [False] * len(pred_xyxy)
+    # Coverage: GT cubierto por cualquier pred (independiente del one-to-one)
+    gt_covered_any = [0] * len(gt_xyxy)
+    
+    # Construir matriz de matches (para one-to-one) y cobertura GT (any)
+    matches = []  # (pred_idx, gt_idx, score/bool)
+    
+    for pred_idx, p in enumerate(pred_xyxy):
+        for gt_idx, g in enumerate(gt_xyxy):
+            if _match_score(p, g, match_mode):
+                # Guardar este match como válido
+                matches.append((pred_idx, gt_idx))
+                # Marcar cobertura GT por cualquier pred
+                gt_covered_any[gt_idx] = 1
+    
+    # Ahora hacer one-to-one matching greedy (cada pred → máximo 1 GT, cada GT → máximo 1 pred)
+    # Para este assignment óptimo, usamos máximo overlap area
+    
+    assigned_preds = set()
+    assigned_gts = set()
+    tp_pairs = []
+    
+    if matches:
+        # Ordenar por overlap area (descendente) para hacer matching greedy
+        matches_with_overlap = []
+        for pred_idx, gt_idx in matches:
+            overlap = _overlap_area(pred_xyxy[pred_idx], gt_xyxy[gt_idx])
+            matches_with_overlap.append((overlap, pred_idx, gt_idx))
+        
+        matches_with_overlap.sort(reverse=True)  # Máximo overlap primero
+        
+        for overlap, pred_idx, gt_idx in matches_with_overlap:
+            if pred_idx not in assigned_preds and gt_idx not in assigned_gts:
+                # Asignar este match
+                assigned_preds.add(pred_idx)
+                assigned_gts.add(gt_idx)
+                tp_pairs.append((pred_idx, gt_idx))
+    
+    # Marcar los hits
+    for pred_idx, gt_idx in tp_pairs:
+        pred_hits[pred_idx] = True
 
     TPg = int(sum(pred_hits))
     FPg = int(len(pred_hits) - TPg)
-    GThit = int(sum(1 for c in gt_hit_counts if c > 0))
+    GThit = int(sum(1 for c in gt_covered_any if c > 0))
     GTtot = int(len(gt_xyxy))
 
     group_precision = TPg / (TPg + FPg) if (TPg + FPg) > 0 else 0.0
@@ -171,7 +222,7 @@ def evaluar_grupos_vs_boxes_plus(
         'gt_recall_coverage': gt_recall_cov,
         'f1_coverage': f1_cov,
         'pred_hits': pred_hits,
-        'gt_hit_counts': gt_hit_counts,
+        'gt_hit_counts': gt_covered_any,
         'match_mode': match_mode,
     }
 

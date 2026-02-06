@@ -1,4 +1,4 @@
-# Python
+# Python & Virtual Environments
 __pycache__/
 *.py[cod]
 *.so
@@ -6,18 +6,34 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+venv/
+env/
+ENV/
+.venv
 
-# Jupyter Notebooks checkpoints
+# Jupyter Notebooks
 .ipynb_checkpoints/
+*.ipynb_checkpoints/
 
-# VS Code
+# IDE
 .vscode/
 .settings/
+.idea/
+*.swp
+*.swo
+
+# Environment & Configuration
+.env
+.env.local
+.env.*.local
 
 # Data and outputs
 data/
 outputs/
 results/
+*.csv
+*.pkl
+*.pickle
 *.h5
 *.ckpt
 *.pth
