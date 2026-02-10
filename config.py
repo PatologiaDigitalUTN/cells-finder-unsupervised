@@ -6,6 +6,10 @@ Centraliza todos los parámetros en un solo lugar.
 class BaseConfig:
     """Configuración base."""
     
+    # ===== MODELO FUNDACIONAL =====
+    model_name = 'biomedclip'  # 'biomedclip', 'uni', 'optimus', 'uni2'
+    model_device = None  # None = auto-detect (cuda si disponible)
+    
     # ===== DATOS =====
     json_path = '/kaggle/input/cric-dataset/classifications.json'
     base_path = '/kaggle/input/cric-dataset'

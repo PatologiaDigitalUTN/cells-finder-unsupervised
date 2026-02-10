@@ -1,18 +1,33 @@
-# Clustering y Segmentación de Núcleos con BiomedCLIP
+# Clustering y Segmentación de Núcleos con Modelos Fundacionales
 
-Pipeline de clustering jerárquico multi-paso para segmentación automática de núcleos en imágenes citológicas usando embeddings de **BiomedCLIP**.
+Pipeline de clustering jerárquico multi-paso para segmentación automática de núcleos en imágenes citológicas usando modelos fundacionales (**BiomedCLIP**, **UNI**, **OPTIMUS**, **UNI 2**).
+
+## 🤖 Modelos Soportados
+
+- **BiomedCLIP** (default): Vision-language model biomédico
+- **UNI**: Universal pathology foundation model
+- **OPTIMUS**: Pathology foundation model (Bioptimus)
+- **UNI 2**: Segunda versión mejorada de UNI
+
+Ver [MODELS_README.md](MODELS_README.md) para guía completa de modelos.
 
 ## ⚡ Quick Start
 
 ```bash
-# Instalar dependencias
+# Instalar dependencias básicas
 pip install -r requirements.txt
 
-# Ejecutar pipeline
+# Ejecutar con BiomedCLIP (default)
 python main.py
 
-# O ver tutorial paso a paso
+# O cambiar modelo en config.py:
+# model_name = 'biomedclip'  # 'uni', 'optimus', 'uni2'
+
+# Ver tutorial paso a paso
 python example.py
+
+# Comparar modelos
+python compare_models.py
 ```
 
 ## 🎯 Descripción
@@ -36,12 +51,14 @@ Pipeline automático de 4 pasos + limpieza:
 └── utils/
     ├── __init__.py
     ├── image_processing.py          # Cargar imágenes y boxes
-    ├── embeddings.py                # Extracción de embeddings BiomedCLIP
+    ├── embeddings.py                # Extracción de embeddings (multi-modelo) 🔧
+    ├── model_factory.py             # Factory de modelos fundacionales 🏭
     ├── multi_step_clustering.py     # Lógica de clustering multi-paso
     ├── evaluation.py                # Métricas y evaluación
     └── visualization.py             # Funciones de plotting
 ```
 
+├── compare_models.py        # Comparar múltiples modelos 🤖
 ## 📁 Estructura del Proyecto
 
 ```
