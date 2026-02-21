@@ -207,3 +207,56 @@ def tile_image(img, tile_size=224, stride=224):
             positions.append((x, y, x + tile_size, y + tile_size))
 
     return tiles, positions
+
+
+def apply_preprocessing(image, method='clahe'):
+    """
+    Aplica preprocesamiento para mejorar contraste y claridad de la imagen.
+    
+    Métodos disponibles:
+    - 'clahe': CLAHE (Contrast Limited Adaptive Histogram Equalization) - RECOMENDADO
+      para imágenes médicas. Mejora contraste localmente sin artefactos.
+    - 'equalize': Equalización de histograma estándar. Más agresivo.
+    - 'normalize': Normalización por desviación estándar. Útil para variaciones globales de iluminación.
+    - 'none': Sin preprocesamiento.
+    
+    Parameters:
+    -----------
+    image : np.ndarray
+        Imagen en escala de grises.
+    method : str
+        Método de preprocesamiento a aplicar.
+    
+    Returns:
+    --------
+    np.ndarray
+        Imagen procesada.
+    """
+    if method == 'none' or image is None:
+        return image
+    
+    # Asegurar que es escala de grises
+    if image.ndim == 3:
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    
+    if method == 'clahe':
+        # CLAHE: mejor para imágenes médicas, mantiene detalles locales
+        # clipLimit controla el contraste (mayor = más contraste)
+        # tileGridSize define el tamaño de los tiles adaptativos
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        return clahe.apply(image)
+    
+    elif method == 'equalize':
+        # Equalización estándar (más agresivo que CLAHE)
+        return cv2.equalizeHist(image)
+    
+    elif method == 'normalize':
+        # Normalización por desviación estándar
+        # Estira el rango dinámico de la imagen
+        mean, std = cv2.meanStdDev(image)
+        if std[0][0] == 0:
+            return image
+        normalized = ((image.astype(np.float32) - mean[0][0]) / (std[0][0] + 1e-8) * 50 + 128).astype(np.uint8)
+        return np.clip(normalized, 0, 255).astype(np.uint8)
+    
+    return image
